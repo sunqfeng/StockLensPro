@@ -25,12 +25,14 @@ mysql_data_engine.py
 from __future__ import annotations
 
 from typing import Dict, List, Optional
-from urllib.parse import quote_plus
 
 import pandas as pd
 import pymysql
 from sqlalchemy import create_engine, text
 from sqlalchemy.engine import Engine
+from sqlalchemy.engine import URL
+
+from runtime_config import validate_database
 
 
 class MySqlDataEngine:
@@ -54,6 +56,8 @@ class MySqlDataEngine:
                 当前数据引擎只是保存起来，方便后续扩展。
         """
 
+        validate_database(mysql_config.host, mysql_config.port, mysql_config.user,
+                          mysql_config.password, mysql_config.database)
         self.config = mysql_config
         self.strategy_config = strategy_config
         self.charset = getattr(mysql_config, "charset", "utf8mb4")
@@ -67,24 +71,15 @@ class MySqlDataEngine:
             future=True,
         )
 
-    def _build_sqlalchemy_url(self) -> str:
+    def _build_sqlalchemy_url(self) -> URL:
         """
-        构造 SQLAlchemy MySQL 连接字符串。
-
-        返回示例：
-            mysql+pymysql://<user>:<password>@<host>:<port>/<database>?charset=utf8mb4
+        构造自动编码特殊字符、默认隐藏密码的 SQLAlchemy URL 对象。
         """
 
-        user = quote_plus(str(self.config.user))
-        password = quote_plus(str(self.config.password))
-        host = str(self.config.host)
-        port = int(self.config.port)
-        database = str(self.config.database)
-
-        return (
-            f"mysql+pymysql://{user}:{password}"
-            f"@{host}:{port}/{database}?charset={self.charset}"
-        )
+        return URL.create('mysql+pymysql', username=self.config.user,
+                          password=self.config.password, host=self.config.host,
+                          port=int(self.config.port), database=self.config.database,
+                          query={'charset': self.charset})
 
     def get_connection(self):
         """

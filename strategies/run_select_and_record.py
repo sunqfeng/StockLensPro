@@ -29,7 +29,7 @@ from datetime import datetime
 from pathlib import Path
 from typing import List, Type
 
-from config import MYSQL_CONFIG, STRATEGY_CONFIG
+from config import MYSQL_CONFIG, PROJECT_DIR, STRATEGY_CONFIG, configured_path
 from mysql_data_engine import MySqlDataEngine
 from recommend_record_repository import RecommendRecordRepository
 from strategies.base import BaseStrategy, RecommendResult
@@ -64,7 +64,7 @@ STRATEGY_CLASSES: List[Type[BaseStrategy]] = [
 ]
 
 
-TECH_SCORE_PROJECT_DIR = Path(os.getenv('STOCKLENS_TECH_SCORE_DIR') or '/srv/python/stock_tech_score_project')
+TECH_SCORE_PROJECT_DIR = configured_path('STOCKLENS_TECH_SCORE_DIR', PROJECT_DIR.parent / 'stock_tech_score_project')
 TECH_SCORE_MAIN = TECH_SCORE_PROJECT_DIR / "main.py"
 
 
@@ -74,7 +74,7 @@ def run_tech_score(recommend_date: str, batch_no: str) -> None:
     if not TECH_SCORE_MAIN.exists():
         raise FileNotFoundError(f"技术评分入口不存在：{TECH_SCORE_MAIN}")
 
-    tech_score_python = TECH_SCORE_PROJECT_DIR / "venv" / "bin" / "python"
+    tech_score_python = configured_path('STOCKLENS_TECH_SCORE_PYTHON', TECH_SCORE_PROJECT_DIR / "venv" / "bin" / "python")
     python_executable = str(tech_score_python) if tech_score_python.exists() else sys.executable
     cmd = [
         python_executable,

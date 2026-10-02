@@ -8,16 +8,17 @@ config.py
 数据库连接信息通过环境变量或本地 config/secrets.env 提供，不写入源码。
 """
 
-from dataclasses import dataclass
+from dataclasses import dataclass, field
 import os
 from pathlib import Path
 
-from dotenv import load_dotenv
+from runtime_config import database_port, load_config, validate_database
 
-load_dotenv(Path(__file__).resolve().parent / 'config' / 'secrets.env', override=False)
+PROJECT_DIR = Path(__file__).resolve().parent
+SECRETS_FILE = load_config(PROJECT_DIR)
 
 
-@dataclass
+@dataclass(repr=False)
 class MySqlConfig:
     """
     MySQL 数据库配置。
@@ -32,11 +33,19 @@ class MySqlConfig:
     """
 
     host: str = os.getenv('DB_HOST', '')
-    port: int = int(os.getenv('DB_PORT', '3306'))
+    port: int = database_port(os.getenv('DB_PORT'))
     user: str = os.getenv('DB_USER', '')
-    password: str = os.getenv('DB_PASSWORD', '')
+    password: str = field(default=os.getenv('DB_PASSWORD', ''), repr=False)
     database: str = os.getenv('DB_NAME', '')
-    charset: str = os.getenv('DB_CHARSET', 'utf8mb4')
+    charset: str = os.getenv('DB_CHARSET') or 'utf8mb4'
+
+    def validate(self):
+        validate_database(self.host, self.port, self.user, self.password, self.database)
+
+
+def configured_path(name, default):
+    # 保留虚拟环境解释器软链接，不转成系统 Python。
+    return Path(os.getenv(name) or default).expanduser().absolute()
 
 
 @dataclass

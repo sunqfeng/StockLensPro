@@ -10,21 +10,24 @@ from datetime import datetime
 from pathlib import Path
 
 
-BASE_DIR = Path(os.getenv('STOCKLENS_WORKSPACE_DIR') or '/srv/python')
-APP_DIR = BASE_DIR / "StockLensPro"
+from stocklens.config import PROJECT_DIR, configured_path
+
+
+BASE_DIR = configured_path('STOCKLENS_WORKSPACE_DIR', PROJECT_DIR.parent)
+APP_DIR = configured_path('STOCKLENS_APP_DIR', PROJECT_DIR)
 TASK_LOG_DIR = APP_DIR / "task_logs"
 TASK_RUN_DIR = TASK_LOG_DIR / "runs"
 TASK_CONFIG_DIR = APP_DIR / "task_config"
 CUSTOM_TASK_PATH = TASK_CONFIG_DIR / "custom_tasks.json"
 TASK_VISIBILITY_PATH = TASK_CONFIG_DIR / "task_visibility.json"
 
-PYWORKSPACE_DIR = BASE_DIR / "pyworkspace"
-SEQUOIA_DIR = BASE_DIR / "sequoia_mysql_strategy"
-TECH_SCORE_DIR = BASE_DIR / "stock_tech_score_project"
+PYWORKSPACE_DIR = configured_path('STOCKLENS_PYWORKSPACE_DIR', BASE_DIR / "pyworkspace")
+SEQUOIA_DIR = configured_path('STOCKLENS_STRATEGY_DIR', BASE_DIR / "strategies")
+TECH_SCORE_DIR = configured_path('STOCKLENS_TECH_SCORE_DIR', BASE_DIR / "stock_tech_score_project")
 
-PYWORKSPACE_PYTHON = BASE_DIR / "AkshareStock" / "venv" / "bin" / "python3"
-SEQUOIA_PYTHON = SEQUOIA_DIR / "venv" / "bin" / "python"
-TECH_SCORE_PYTHON = TECH_SCORE_DIR / "venv" / "bin" / "python"
+PYWORKSPACE_PYTHON = configured_path('STOCKLENS_PYWORKSPACE_PYTHON', BASE_DIR / "AkshareStock" / "venv" / "bin" / "python3")
+SEQUOIA_PYTHON = configured_path('STOCKLENS_STRATEGY_PYTHON', SEQUOIA_DIR / "venv" / "bin" / "python")
+TECH_SCORE_PYTHON = configured_path('STOCKLENS_TECH_SCORE_PYTHON', TECH_SCORE_DIR / "venv" / "bin" / "python")
 
 STRATEGY_OPTIONS = [
     "全部",
@@ -178,9 +181,9 @@ def _ensure_safe_cwd(cwd):
         cwd_path = BASE_DIR / cwd_path
 
     resolved = cwd_path.resolve()
-    allowed_roots = [Path("/srv").resolve()]
+    allowed_roots = [configured_path('STOCKLENS_TASK_ALLOWED_ROOT', BASE_DIR).resolve()]
     if not any(resolved == root or root in resolved.parents for root in allowed_roots):
-        raise ValueError("工作目录必须在 /srv 下面。")
+        raise ValueError("工作目录必须在 STOCKLENS_TASK_ALLOWED_ROOT 配置的允许目录下面。")
     if not resolved.exists() or not resolved.is_dir():
         raise ValueError(f"工作目录不存在：{resolved}")
     return resolved

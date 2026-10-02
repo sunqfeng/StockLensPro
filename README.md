@@ -11,7 +11,11 @@
 
 ## 本地配置
 
-先安装各子项目 `requirements.txt` 中的依赖。把相应的 `config/secrets.env.example` 复制成同目录下的 `secrets.env`，只在本地填写自己的数据库配置和 API Key。环境变量优先于本地配置文件。
+先安装各子项目 `requirements.txt` 中的依赖。把相应的 `config/secrets.env.example` 复制成同目录下的 `secrets.env`，只在本地填写自己的数据库配置和 API Key。环境变量优先于本地配置文件，密码中的 `${...}` 不做变量展开。必填项是 `DB_HOST`、`DB_USER`、`DB_PASSWORD`、`DB_NAME`；`DB_PORT` 默认为 3306。连接数据库前会校验，报错只显示配置项名称。
+
+看板、选股、Jev 和任务中心采用相同的配置加载约定。两个子项目仍可独立部署，因此各保留一个相同的轻量加载模块，不依赖仓库外的公共包。推荐在服务器上只维护一份真实 `secrets.env`：启动两个项目时都设置 `STOCKLENS_CONFIG_FILE` 指向它，或将选股项目的 `config/secrets.env` 软链接到看板的配置文件。显式指定的文件不存在时直接报错，不会偷偷回退到别的配置。未指定时默认读取各自项目下的 `config/secrets.env`，与当前工作目录无关。
+
+配置在进程启动时读取。改完配置后重启看板；下一次启动的选股/采集任务会读取新配置。不要打印配置对象或完整数据库 URL。
 
 启动看板：
 
@@ -34,7 +38,10 @@ python run_select_and_record.py --help
 可配置路径：
 
 - `STOCKLENS_WORKSPACE_DIR`：任务中心依赖的外部项目根目录。
+- `STOCKLENS_APP_DIR`、`STOCKLENS_STRATEGY_DIR`、`STOCKLENS_PYWORKSPACE_DIR`：各项目目录；看板默认使用自身位置，选股默认使用本仓库 `strategies/`。
 - `STOCKLENS_TECH_SCORE_DIR`：选股后调用的外部技术评分项目目录。
+- `STOCKLENS_PYWORKSPACE_PYTHON`、`STOCKLENS_STRATEGY_PYTHON`、`STOCKLENS_TECH_SCORE_PYTHON`：对应任务的 Python 解释器路径。
+- `STOCKLENS_TASK_ALLOWED_ROOT`：自定义任务允许的工作目录根，默认是 workspace；部署时只配置必要范围。
 - `STOCKLENS_SHADOW_DIR`：看板读取的新规则快照目录；不设置时默认读取本仓库 `strategies/outputs/recommendation_shadow/`。
 
 数据库账号应只具备业务所需权限。不要上传真实 `secrets.env`、数据库导出文件、运行快照或密钥文件，即使仓库改成私有也一样。
@@ -53,4 +60,4 @@ python run_select_and_record.py --help
 python -m unittest discover -s tests -q
 ```
 
-脱敏副本已通过看板 47 项、选股 10 项测试。数据库配置测试使用虚构的测试值，不连接生产数据库。
+数据库配置测试使用虚构的测试值，不连接生产数据库。配置回归覆盖文件选择、环境覆盖、缺失项、非法端口、特殊字符与日志脱敏。

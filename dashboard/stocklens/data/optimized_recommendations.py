@@ -9,11 +9,12 @@ import pandas as pd
 from sqlalchemy import text
 
 from stocklens.db import get_engine
+from stocklens.config import PROJECT_DIR, configured_path
 
 ALGORITHM_VERSION = "candidate-v1.2"
 ALGORITHM_EFFECTIVE_DATE = date(2026, 10, 2)
-SNAPSHOT_DIR = Path(os.getenv('STOCKLENS_SHADOW_DIR') or str(
-    Path(__file__).resolve().parents[3] / 'strategies' / 'outputs' / 'recommendation_shadow'))
+SNAPSHOT_DIR = configured_path('STOCKLENS_SHADOW_DIR',
+    configured_path('STOCKLENS_STRATEGY_DIR', PROJECT_DIR.parent / 'strategies') / 'outputs' / 'recommendation_shadow')
 
 
 def read_optimized_ids(start_date, end_date, selected_batch, directory=SNAPSHOT_DIR):

@@ -1,15 +1,13 @@
 from __future__ import annotations
 
 import os
-from pathlib import Path
 from time import perf_counter
 from typing import Any
 
-from dotenv import load_dotenv
+from stocklens.config import PROJECT_DIR, SECRETS_FILE
+from stocklens.runtime_config import load_config
 
 
-PROJECT_DIR = Path(__file__).resolve().parents[2]
-SECRETS_FILE = PROJECT_DIR / "config" / "secrets.env"
 QUESTION_VERSION = "stock-signal-v1"
 
 QUESTIONS = {
@@ -129,7 +127,7 @@ def evaluate_signal(state: dict, client: Any | None = None) -> dict:
         if client is not None:
             return _evaluate_with_client(state, client, started)
 
-        load_dotenv(SECRETS_FILE, override=False)
+        load_config(PROJECT_DIR)
         if not os.getenv("TYPESAFE_API_KEY"):
             return _empty_result("DISABLED", 0, "TYPESAFE_API_KEY is not configured")
 
