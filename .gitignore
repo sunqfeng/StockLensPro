@@ -1,0 +1,34 @@
+# Credentials and local deployment settings
+.env
+.env.*
+*.env
+*.env.*
+!*.env.example
+!.env.example
+*.pem
+*.key
+*.p12
+*.pfx
+secrets.toml
+credentials*
+id_rsa*
+id_ed25519*
+.ssh/
+
+# Runtime data, exports, backups and machine-specific metadata
+**/__pycache__/
+*.py[cod]
+*.log
+*.bak*
+*.tar.gz
+*.zip
+**/outputs/
+**/backups/
+**/task_logs/
+**/task_config/
+**/.codegraph/
+**/.claude/
+**/.streamlit/
+.venv/
+venv/
+.DS_Store

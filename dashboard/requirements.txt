@@ -1,0 +1,8 @@
+streamlit
+pandas
+plotly
+SQLAlchemy
+PyMySQL
+requests
+python-dotenv
+typesafe-sdk==0.7.1

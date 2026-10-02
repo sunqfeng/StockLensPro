@@ -1,0 +1,5 @@
+pandas
+pymysql
+sqlalchemy
+akshare
+python-dotenv
