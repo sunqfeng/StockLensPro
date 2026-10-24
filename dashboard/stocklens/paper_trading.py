@@ -1,10 +1,13 @@
 from __future__ import annotations
 
 import importlib.util
+import hashlib
 import json
+import math
 import subprocess
 import sys
 from datetime import date, datetime, time
+from decimal import Decimal, ROUND_HALF_UP
 from functools import lru_cache
 from pathlib import Path
 from zoneinfo import ZoneInfo
@@ -17,6 +20,7 @@ from stocklens.integrations.jev import build_signal_state, evaluate_signal
 
 
 TZ = ZoneInfo("Asia/Shanghai")
+EXECUTION_VERSION = "cn-limits-20260706-v1"
 BASE_DIR = Path("/srv/python")
 STRATEGY_DIR = BASE_DIR / "sequoia_mysql_strategy"
 QUOTE_MODULE = BASE_DIR / "pyworkspace" / "auto_update_stock_daily.py"
@@ -149,24 +153,34 @@ def exit_reason(price: float, take_profit: float, stop_loss: float, holding_days
     return None
 
 
-def _price_limit_pct(stock_code: str, stock_name: str | None) -> float:
+def _price_limit_pct(stock_code: str, stock_name: str | None, trade_date: date | None = None) -> float:
+    day = trade_date or now_cn().date()
     name = (stock_name or "").upper()
-    if "ST" in name:
-        return 5.0
-    if stock_code.startswith(("300", "301", "688", "689")):
+    if stock_code.startswith(("688", "689")):
+        return 20.0
+    if stock_code.startswith(("300", "301")) and day >= date(2020, 8, 24):
         return 20.0
     if stock_code.startswith(("4", "8", "92")):
         return 30.0
+    if "ST" in name and day < date(2026, 7, 6):
+        return 5.0
     return 10.0
 
 
 def limit_locked(quote: dict, side: str) -> bool:
-    previous = float(quote.get("prev_close") or 0)
-    current = float(quote.get("close_price") or 0)
-    if previous <= 0 or current <= 0:
+    try:
+        previous = float(quote.get("prev_close") or 0)
+        current = float(quote.get("close_price") or 0)
+        quote_time = pd.to_datetime(quote.get("quote_time"), errors="coerce")
+    except (ValueError, TypeError):
         return True
-    limit_pct = _price_limit_pct(str(quote["stock_code"]), quote.get("stock_name"))
-    limit_price = round(previous * (1 + (limit_pct if side == "BUY" else -limit_pct) / 100), 2)
+    if (side not in {"BUY", "SELL"} or not math.isfinite(previous) or not math.isfinite(current)
+            or previous <= 0 or current <= 0 or pd.isna(quote_time)
+            or quote_time.date() > now_cn().date()):
+        return True
+    limit_pct = _price_limit_pct(str(quote["stock_code"]), quote.get("stock_name"), quote_time.date())
+    factor = Decimal(1) + Decimal(str(limit_pct if side == "BUY" else -limit_pct)) / 100
+    limit_price = float((Decimal(str(previous)) * factor).quantize(Decimal("0.01"), rounding=ROUND_HALF_UP))
     # ponytail: conservative price-only lock check; replace with order-book depth if real execution is added.
     return current >= limit_price if side == "BUY" else current <= limit_price
 
@@ -360,7 +374,8 @@ def _start_run(account_id: int, run_type: str, today: date, data_date: str | Non
                 VALUES (:account_id, :run_type, :trade_date, :data_date, :code_version)
             """),
             {"account_id": account_id, "run_type": run_type, "trade_date": today,
-             "data_date": data_date, "code_version": _code_version()},
+             "data_date": data_date,
+             "code_version": f"{_code_version()}|{EXECUTION_VERSION}|{hashlib.sha256(Path(__file__).read_bytes()).hexdigest()[:12]}"},
         )
         return int(result.lastrowid)
 
